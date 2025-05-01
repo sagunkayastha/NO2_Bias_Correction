@@ -1,0 +1,6 @@
+data/combined_ds.nc
+data/final_details.csv
+runs/*
+*.png
+*.pth
+__pycache__/
