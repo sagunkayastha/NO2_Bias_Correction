@@ -122,7 +122,7 @@ class Tempo_model:
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", factor=0.5, patience=5, verbose=True
         )
-        patience = 10  # Number of epochs to wait for improvement
+        patience = 10 
         best_eval_loss = np.inf  # Start with a very low IOA
 
         epochs_no_improve = 0

@@ -8,7 +8,8 @@ class ResidualBlock1D(nn.Module):
         self.conv1 = nn.Conv1d(
             in_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2
         )
-        self.bn1 = nn.BatchNorm1d(out_channels)
+        # Use InstanceNorm instead of BatchNorm for batch-independent behavior
+        self.bn1 = nn.InstanceNorm1d(out_channels, affine=True)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(dropout_prob)
         self.conv2 = nn.Conv1d(
@@ -17,7 +18,7 @@ class ResidualBlock1D(nn.Module):
             kernel_size=kernel_size,
             padding=kernel_size // 2,
         )
-        self.bn2 = nn.BatchNorm1d(out_channels)
+        self.bn2 = nn.InstanceNorm1d(out_channels, affine=True)
 
         # Residual connection adjustment
         self.residual = (
@@ -70,15 +71,15 @@ class AMFPredictor_res(nn.Module):
     ):
         super(AMFPredictor_res, self).__init__()
 
-        # 2D Feature Branch
+        # 2D Feature Branch (using LayerNorm for batch-independent behavior)
         self.fc_2d = nn.Sequential(
             nn.Linear(input_dim_2d, hidden_dim),
             nn.ReLU(),
-            nn.BatchNorm1d(hidden_dim),
+            nn.LayerNorm(hidden_dim),
             nn.Dropout(dropout_prob),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.BatchNorm1d(hidden_dim),
+            nn.LayerNorm(hidden_dim),
             nn.Dropout(dropout_prob),
         )
 

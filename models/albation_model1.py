@@ -14,6 +14,7 @@ class Transformer2DBranch(nn.Module):
             nhead=2,
             dim_feedforward=hidden_dim * 2,
             dropout=dropout_prob,
+            batch_first=True,  # CRITICAL: Makes input (batch, seq, hidden) not (seq, batch, hidden)
         )
         self.transformer_encoder = nn.TransformerEncoder(
             encoder_layer, num_layers=num_layers
@@ -28,7 +29,7 @@ class Transformer2DBranch(nn.Module):
         return x
 
 
-### 🔹 Multi-Head Attention Fusion
+### 🔹 Multi-Head Attention Fusion (Batch-Independent)
 class MultiHeadAttentionFusion(nn.Module):
     def __init__(self, hidden_dim, num_heads=2):
         super(MultiHeadAttentionFusion, self).__init__()
@@ -36,21 +37,25 @@ class MultiHeadAttentionFusion(nn.Module):
         self.key = nn.Linear(hidden_dim, hidden_dim)
         self.value = nn.Linear(hidden_dim, hidden_dim)
         self.softmax = nn.Softmax(dim=-1)
+        self.hidden_dim = hidden_dim
 
     def forward(self, x_2d, x_3d):
         """
         x_2d: (batch, hidden_dim)
         x_3d: (batch, hidden_dim)
+        Computes attention WITHIN each sample (not across batch).
         """
-        q = self.query(x_2d)
-        k = self.key(x_3d)
-        v = self.value(x_3d)
+        # Add sequence dimension for proper attention
+        q = self.query(x_2d).unsqueeze(1)  # (batch, 1, hidden_dim)
+        k = self.key(x_3d).unsqueeze(1)    # (batch, 1, hidden_dim)
+        v = self.value(x_3d).unsqueeze(1)  # (batch, 1, hidden_dim)
 
+        # Attention within each sample: (batch, 1, 1)
         attention_scores = self.softmax(
-            q @ k.transpose(-2, -1) / (x_3d.size(-1) ** 0.5)
+            (q @ k.transpose(-2, -1)) / (self.hidden_dim ** 0.5)
         )
-        fused = attention_scores @ v + x_2d  # Residual connection
-        return fused
+        context = (attention_scores @ v).squeeze(1)  # (batch, hidden_dim)
+        return context + x_2d  # Residual connection
 
 
 ### 🔹 FNO-based 3D Feature Branch
